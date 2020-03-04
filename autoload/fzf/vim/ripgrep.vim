@@ -52,16 +52,40 @@ for s:color_name in keys(s:ansi)
 endfor
 " }}}
 
+function! fzf#vim#ripgrep#warn(msg) abort
+  echohl WarningMsg
+  echom a:msg
+  echohl NONE
+endfunction
 
 " -------------------
 " Core Implementation
 " -------------------
 
-function! fzf#vim#ripgrep#rg(search_pattern, ...) abort
+" :Rg
+" fzf 0.19+ "reload' magic: https://github.com/junegunn/fzf/issues/1750
+function! fzf#vim#ripgrep#rg(initial_query, fullscreen)
+  let command_fmt = 'rg --column --line-number --no-heading --color=always --smart-case %s || true'
+  let initial_command = printf(command_fmt, shellescape(a:initial_query))
+  let reload_command = printf(command_fmt, '{q}')
+  let fzf_opts = [
+        \ '--phony', '--query', a:initial_query, '--bind', 'change:reload:'.reload_command,
+        \ '--prompt', 'Rg> ']
+  " TODO: Delegate to fzf#vim#ripgrep#rg so that it can have share same features
+  call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview({'options': fzf_opts}), a:fullscreen)
+
+  " TODO implement CTRL-Q (this is not easy). Need to access user's query inside the fzf process
+  tmap <buffer> <silent> <C-q>    <C-\><C-n>:call timer_start(0, {->
+        \ fzf#vim#ripgrep#warn('Sorry, this is not yet implemented.')})<CR>:q<CR>
+endfunction
+
+
+" :RgFzf (rg fuzzy)
+function! fzf#vim#ripgrep#rg_fzf(search_pattern, ...) abort
   " search_pattern: query to ripgrep. star(*) must have already been resolved
   let l:opts = get(a:, '1', {})
   let l:fullscreen = get(l:opts, 'fullscreen', 0)
-  let l:prompt_name = get(l:opts, 'prompt_name', 'Rg')
+  let l:prompt_name = get(l:opts, 'prompt_name', 'RgFzf')
   let l:prompt_query = get(l:opts, 'prompt_query', a:search_pattern)
   let l:rg_additional_arg = get(l:opts, 'rg_additional_arg', '')
 
@@ -107,8 +131,8 @@ function! s:fzfrg_bind_keymappings(query, rg_options) abort
 endfunction
 
 
-
-function! fzf#vim#ripgrep#rgdef(query, ...) abort
+" :RgDefFzf
+function! fzf#vim#ripgrep#rgdef_fzf(query, ...) abort
   let l:opts = get(a:, '1', {})
   let l:fullscreen = get(l:opts, 'fullscreen', 0)
   " TODO: currently, only python is supported.
@@ -121,9 +145,9 @@ function! fzf#vim#ripgrep#rgdef(query, ...) abort
     let rgdef_pattern = '^\s*'.a:query
   endif
 
-  return fzf#vim#ripgrep#rg(rgdef_pattern, {
+  return fzf#vim#ripgrep#rg_fzf(rgdef_pattern, {
         \ 'fullscreen': l:fullscreen,
-        \ 'prompt_name': 'RgDef', 'prompt_query': a:query,
+        \ 'prompt_name': 'RgDefFzf', 'prompt_query': a:query,
         \ 'rg_additional_arg': rgdef_type })
 endfunction
 

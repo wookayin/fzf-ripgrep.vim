@@ -25,9 +25,10 @@ Usage
 
 ### Commands
 
-| Command           | List                                                                    |
-| ---               | ---                                                                     |
-| `:Rg`             | Perform [rg][rg] search                                                 |
+| Command           | List                                                                               |
+| ---               | ---                                                                                |
+| `:Rg [query]`     | Perform [rg][rg] search (interactive query refinement)                             |
+| `:RgFzf [query]`  | Perform [rg][rg] search (filtering with FZF), similar to [fzf.vim][fzf.vim]'s :Rg  |
 
 ### Keybindings
 
