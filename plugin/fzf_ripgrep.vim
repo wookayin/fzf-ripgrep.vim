@@ -1,0 +1,30 @@
+" Copyright (c) 2020 Jongwook Choi
+"
+" MIT License
+"
+let s:cpo_save = &cpo
+set cpo&vim
+" ------------------------------------------------------------------
+
+function! s:rg_star_to_cword(args) abort
+  if a:args == '*'   " * is designated to word under cursor
+    return '\b' . expand("<cword>") . '\b'   " \b for word boundaries
+  else
+    return a:args
+  endif
+endfunction
+
+
+" :Rg
+command! -bang -nargs=* Rg   call fzf#vim#ripgrep#rg(s:rg_star_to_cword(<q-args>), {'fullscreen' : <bang>0})
+
+" :Def, Rgdef -- Easily find definition/declaration (requires ripgrep)
+" e.g. :Def class, :Def def, :Def myfunc, :Def class MyClass
+command! -bang -nargs=* RgDef   call fzf#vim#ripgrep#rgdef(s:rg_star_to_cword(<q-args>), {'fullscreen': <bang>0})
+command! -bang -nargs=* Def     call fzf#vim#ripgrep#rgdef(s:rg_star_to_cword(<q-args>), {'fullscreen': <bang>0})
+command! -bang -nargs=* D       call fzf#vim#ripgrep#rgdef(s:rg_star_to_cword(<q-args>), {'fullscreen': <bang>0})
+
+" ------------------------------------------------------------------
+let &cpo = s:cpo_save
+unlet s:cpo_save
+
