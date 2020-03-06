@@ -62,31 +62,42 @@ endfunction
 " Core Implementation
 " -------------------
 
-" :Rg
+" :Rg (non-fuzzy)
 " fzf 0.19+ "reload' magic: https://github.com/junegunn/fzf/issues/1750
-function! fzf#vim#ripgrep#rg(initial_query, fullscreen)
-  let command_fmt = 'rg --column --line-number --no-heading --color=always --smart-case %s || true'
-  let initial_command = printf(command_fmt, shellescape(a:initial_query))
-  let reload_command = printf(command_fmt, '{q}')
+function! fzf#vim#ripgrep#rg(initial_query, ...) abort
+  let l:opts = get(a:, 1, {})
+  let l:fullscreen = get(l:opts, 'fullscreen', 0)
+  let l:prompt_name = get(l:opts, 'prompt_name', 'Rg')
+  let l:path = get(l:opts, 'path', '')
+
+  " Set search path automatically, if nerdtree tree/explorer is shown
+  if empty(l:path)
+    let l:path = (&filetype == 'nerdtree' ? b:NERDTree.root.path._str() : '')
+  endif
+
+  let command_fmt = 'rg --column --line-number --no-heading --color=always --smart-case %s %s || true'
+  let l:rg_path_args = !empty(l:path) ? shellescape(l:path) : ''
+  let initial_command = printf(command_fmt, shellescape(a:initial_query), l:rg_path_args)
+  let reload_command = printf(command_fmt, '{q}', l:rg_path_args)
   let fzf_opts = [
         \ '--phony', '--query', a:initial_query, '--bind', 'change:reload:'.reload_command,
-        \ '--prompt', 'Rg> ']
+        \ '--prompt', l:prompt_name.'> ']
   " TODO: Delegate to fzf#vim#ripgrep#rg so that it can have share same features
-  call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview({'options': fzf_opts}), a:fullscreen)
+  call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview({'options': fzf_opts}), l:fullscreen)
 
-  " TODO implement CTRL-Q (this is not easy). Need to access user's query inside the fzf process
-  tmap <buffer> <silent> <C-q>    <C-\><C-n>:call timer_start(0, {->
-        \ fzf#vim#ripgrep#warn('Sorry, this is not yet implemented.')})<CR>:q<CR>
+  " TODO: Need to access user's query (if it has changed) inside the fzf process
+  call s:fzfrg_bind_keymappings(a:initial_query, '')
 endfunction
 
 
 " :RgFzf (rg fuzzy)
 function! fzf#vim#ripgrep#rg_fzf(search_pattern, ...) abort
   " search_pattern: query to ripgrep. star(*) must have already been resolved
-  let l:opts = get(a:, '1', {})
+  let l:opts = get(a:, 1, {})
   let l:fullscreen = get(l:opts, 'fullscreen', 0)
   let l:prompt_name = get(l:opts, 'prompt_name', 'RgFzf')
   let l:prompt_query = get(l:opts, 'prompt_query', a:search_pattern)
+  let l:path = get(l:opts, 'path', '')
   let l:rg_additional_arg = get(l:opts, 'rg_additional_arg', '')
 
   let fzf_opts_prompt = ['--prompt', printf(l:prompt_name.'%s> ', empty(l:prompt_query) ? '' : (' ('.l:prompt_query.')'))]
@@ -98,15 +109,18 @@ function! fzf#vim#ripgrep#rg_fzf(search_pattern, ...) abort
   let fzf_opts_contentsonly = ['--delimiter', ':', '--nth', '4..']   " fzf.vim#346
   let fzf_opts = fzf_opts_prompt + fzf_opts_header + fzf_opts_contentsonly
 
-  " Set search path for ripgrep, if nerdtree tree/explorer is shown
-  let l:target_directory = (&filetype == 'nerdtree' ? b:NERDTree.root.path._str() : '')
-  let l:rg_path_args = !empty(l:target_directory) ? shellescape(l:target_directory) : ''
+  " Set search path automatically, if nerdtree tree/explorer is shown
+  if empty(l:path)
+    let l:path = (&filetype == 'nerdtree' ? b:NERDTree.root.path._str() : '')
+  endif
+  let l:rg_path_args = !empty(l:path) ? shellescape(l:path) : ''
   if &filetype == 'nerdtree' && bufname('%') == get(t:, 'NERDTreeBufName', '')
     wincmd w   " we need to move the focus out of the pinned nerdtree buffer
   endif
 
   " Invoke ripgrep through fzf
-  let rg_command = 'rg -i --column --line-number --no-heading --color=always '.l:rg_additional_arg.' '.shellescape(a:search_pattern).' '.l:rg_path_args
+  " TODO: pipe post-processor
+  let rg_command = 'rg --column --line-number --no-heading --color=always --smart-case '.l:rg_additional_arg.' '.shellescape(a:search_pattern).' '.l:rg_path_args
   call fzf#vim#grep(rg_command, 1,
         \ l:fullscreen ? fzf#vim#with_preview({'options': fzf_opts}, 'up:60%')
         \              : fzf#vim#with_preview({'options': fzf_opts}, 'right:50%', '?'),
@@ -125,7 +139,7 @@ function! s:fzfrg_bind_keymappings(query, rg_options) abort
   if !empty(t:FzfRg_last_query)
     " CTRL-Q (unless query is empty) -> call rg again into the quickfix
     tnoremap <silent> <buffer> <C-q>    <C-\><C-n>:call timer_start(0, {
-          \ -> ag#Ag('grep!', "-i " . shellescape(t:FzfRg_last_query) . " " . t:FzfRg_last_options)
+          \ -> ag#Ag('grep!', "--smart-case " . shellescape(t:FzfRg_last_query) . " " . t:FzfRg_last_options)
           \ })<CR>:q<CR>
   endif
 endfunction
@@ -135,6 +149,7 @@ endfunction
 function! fzf#vim#ripgrep#rgdef_fzf(query, ...) abort
   let l:opts = get(a:, '1', {})
   let l:fullscreen = get(l:opts, 'fullscreen', 0)
+  let l:path = get(l:opts, 'path', '')  " TODO can we just pass through opts dict?
   " TODO: currently, only python is supported.
   let rgdef_type = '--type "py"'
   let rgdef_prefix = '^\s*(def|class)'
@@ -148,6 +163,7 @@ function! fzf#vim#ripgrep#rgdef_fzf(query, ...) abort
   return fzf#vim#ripgrep#rg_fzf(rgdef_pattern, {
         \ 'fullscreen': l:fullscreen,
         \ 'prompt_name': 'RgDefFzf', 'prompt_query': a:query,
+        \ 'path': l:path,
         \ 'rg_additional_arg': rgdef_type })
 endfunction
 

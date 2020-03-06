@@ -39,11 +39,19 @@ Usage
 
 ### Advanced: as a vim function
 
-TBD
+`fzf#vim#ripgrep#rg(search_pattern, opts)`
+
+`fzf#vim#ripgrep#rg_fzf(search_pattern, opts)`
+
+opts:
+- `fullscreen` (boolean)
+- `prompt_name` (str), defaults `Rg`
+- `prompt_query` (str), defaults `a:search_pattern`
+- `path` (str), path (file or directory) to perform ripgrep search on.
+
 
 <!--
 - filetype (-t <type>)
-- directory to perform ripgrep search
 -->
 
 

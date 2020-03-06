@@ -21,7 +21,7 @@ endfunction
 command! -bang -nargs=* RgFzf      call fzf#vim#ripgrep#rg_fzf(s:rg_star_to_cword(<q-args>), {'fullscreen' : <bang>0})
 
 " :Rg (ripgrep interactive)
-command! -nargs=* -bang Rg         call fzf#vim#ripgrep#rg(s:rg_star_to_cword(<q-args>, ''), <bang>0)
+command! -nargs=* -bang Rg         call fzf#vim#ripgrep#rg(s:rg_star_to_cword(<q-args>, ''), {'fullscreen' : <bang>0})
 
 " :Def, Rgdef -- Easily find definition/declaration (requires ripgrep)
 " e.g. :Def class, :Def def, :Def myfunc, :Def class MyClass
