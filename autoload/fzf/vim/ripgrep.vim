@@ -6,6 +6,19 @@
 let s:cpo_save = &cpo
 set cpo&vim
 
+" -------------------
+" Configs
+" -------------------
+
+" keybindings (default)
+let s:fzf_ripgrep_keybindings = {}
+let s:fzf_ripgrep_keybindings['toggle-preview'] = 'CTRL-/'
+
+let g:fzf_ripgrep_keybindings = extend(
+      \ copy(s:fzf_ripgrep_keybindings),
+      \ get(g:, 'fzf_ripgrep_keybindings', {})
+      \)
+
 
 " -------------------
 " Common & Utilities
@@ -79,11 +92,19 @@ function! fzf#vim#ripgrep#rg(initial_query, ...) abort
   let l:rg_path_args = !empty(l:path) ? shellescape(l:path) : ''
   let initial_command = printf(command_fmt, shellescape(a:initial_query), l:rg_path_args)
   let reload_command = printf(command_fmt, '{q}', l:rg_path_args)
+  let fzf_opts_header = ['--ansi', '--header',
+        \ ':: Press '.s:magenta(g:fzf_ripgrep_keybindings['toggle-preview'], 'Special').' to toggle preview, '
+        \ . (!empty(a:initial_query) ? s:magenta('CTRL-Q', 'Special').' to switch to quickfix' : '')
+        \ .nr2char(10). '   To use fuzy-filtering mode rather than refreshing rg, try '.s:magenta(':RgFzf', 'Special').' instead.'
+        \ ]
   let fzf_opts = [
         \ '--phony', '--query', a:initial_query, '--bind', 'change:reload:'.reload_command,
-        \ '--prompt', l:prompt_name.'> ']
-  " TODO: Delegate to fzf#vim#ripgrep#rg so that it can have share same features
-  call fzf#vim#grep(initial_command, 1, fzf#vim#with_preview({'options': fzf_opts}), l:fullscreen)
+        \ '--prompt', l:prompt_name.'> '] + fzf_opts_header
+
+  call fzf#vim#grep(initial_command, 1,
+        \ l:fullscreen ? fzf#vim#with_preview({'options': fzf_opts}, 'up:60%', g:fzf_ripgrep_keybindings['toggle-preview'])
+        \              : fzf#vim#with_preview({'options': fzf_opts}, 'right:50%', g:fzf_ripgrep_keybindings['toggle-preview']),
+        \ l:fullscreen)
 
   " TODO: Need to access user's query (if it has changed) inside the fzf process
   call s:fzfrg_bind_keymappings(a:initial_query, '')
@@ -102,9 +123,9 @@ function! fzf#vim#ripgrep#rg_fzf(search_pattern, ...) abort
 
   let fzf_opts_prompt = ['--prompt', printf(l:prompt_name.'%s> ', empty(l:prompt_query) ? '' : (' ('.l:prompt_query.')'))]
   let fzf_opts_header = ['--ansi', '--header',
-        \ ':: Press '.s:magenta('?', 'Special').' to toggle preview, '
+        \ ':: Press '.s:magenta(g:fzf_ripgrep_keybindings['toggle-preview'], 'Special').' to toggle preview, '
         \ . (!empty(a:search_pattern) ? s:magenta('CTRL-Q', 'Special').' to switch to quickfix' : '')
-        \ .nr2char(10). '   To refresh ripgrep results rather than fuzzy-filtering, try '.s:magenta(':RG', 'Special').' instead.'
+        \ .nr2char(10). '   To refresh ripgrep results rather than fuzzy-filtering, try '.s:magenta(':Rg', 'Special').' instead.'
         \ ]
   let fzf_opts_contentsonly = ['--delimiter', ':', '--nth', '4..']   " fzf.vim#346
   let fzf_opts = fzf_opts_prompt + fzf_opts_header + fzf_opts_contentsonly
@@ -122,8 +143,8 @@ function! fzf#vim#ripgrep#rg_fzf(search_pattern, ...) abort
   " TODO: pipe post-processor
   let rg_command = 'rg --column --line-number --no-heading --color=always --smart-case '.l:rg_additional_arg.' '.shellescape(a:search_pattern).' '.l:rg_path_args
   call fzf#vim#grep(rg_command, 1,
-        \ l:fullscreen ? fzf#vim#with_preview({'options': fzf_opts}, 'up:60%')
-        \              : fzf#vim#with_preview({'options': fzf_opts}, 'right:50%', '?'),
+        \ l:fullscreen ? fzf#vim#with_preview({'options': fzf_opts}, 'up:60%', g:fzf_ripgrep_keybindings['toggle-preview'])
+        \              : fzf#vim#with_preview({'options': fzf_opts}, 'right:50%', g:fzf_ripgrep_keybindings['toggle-preview']),
         \ l:fullscreen)
   call s:fzfrg_bind_keymappings(a:search_pattern, l:rg_additional_arg)        " TODO directory???
 endfunction

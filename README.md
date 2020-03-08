@@ -12,7 +12,7 @@ This plugin adds [a bunch of batteries](#features) so that you can instantly jum
 Features
 --------
 
-- [x] Always comes with fzf preview (toggle with `?`)
+- [x] Always comes with fzf preview (toggle with `CTRL-/`)
 - [x] FZF matchs file contents only, not file names
 - [x] <!-- Completion and --> cword expansion in vim commands (e.g. `*` for `<cword>`, `:Rg*`)
 - [x] Aware of [NERDTree][nerdtree] and [NERDTreeTabs][nerdtree-tabs]: do not mess up them
@@ -35,7 +35,7 @@ Usage
 - `CTRL-Q`: Send the current search result to the quickfix window.
 - Common [fzf][fzf] key-bindings:
   - `CTRL-T` (new tab), `CTRL-X` (split), `CTRL-V` (vsplit)
-  - `?` to toggle preview
+  - `CTRL-/` to toggle preview   (or `g:fzf_ripgrep_keybindings['toggle-preview']`)
 
 ### Advanced: as a vim function
 
