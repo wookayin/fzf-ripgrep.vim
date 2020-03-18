@@ -71,6 +71,16 @@ function! fzf#vim#ripgrep#warn(msg) abort
   echohl NONE
 endfunction
 
+function! fzf#vim#ripgrep#is_buffer_explorer()
+  " returns True if the current buffer is an explorer-type buffer
+  " (e.g. NERDTree, coc-explorer) to avoid opening files in the same window.
+  if &filetype == 'nerdtree' && bufname('%') == get(t:, 'NERDTreeBufName', '')
+    return 1
+  elseif &filetype == 'coc-explorer'
+    return 1
+  endif
+  return 0
+endfunction
 " -------------------
 " Core Implementation
 " -------------------
@@ -100,6 +110,10 @@ function! fzf#vim#ripgrep#rg(initial_query, ...) abort
   let fzf_opts = [
         \ '--phony', '--query', a:initial_query, '--bind', 'change:reload:'.reload_command,
         \ '--prompt', l:prompt_name.'> '] + fzf_opts_header
+
+  if fzf#vim#ripgrep#is_buffer_explorer()
+    wincmd w   " we need to move the focus out of the pinned nerdtree buffer or coc-explorer
+  endif
 
   call fzf#vim#grep(initial_command, 1,
         \ l:fullscreen ? fzf#vim#with_preview({'options': fzf_opts}, 'up:60%', g:fzf_ripgrep_keybindings['toggle-preview'])
@@ -135,8 +149,9 @@ function! fzf#vim#ripgrep#rg_fzf(search_pattern, ...) abort
     let l:path = (&filetype == 'nerdtree' ? b:NERDTree.root.path._str() : '')
   endif
   let l:rg_path_args = !empty(l:path) ? shellescape(l:path) : ''
-  if &filetype == 'nerdtree' && bufname('%') == get(t:, 'NERDTreeBufName', '')
-    wincmd w   " we need to move the focus out of the pinned nerdtree buffer
+
+  if fzf#vim#ripgrep#is_buffer_explorer()
+    wincmd w   " we need to move the focus out of the pinned nerdtree buffer or coc-explorer
   endif
 
   " Invoke ripgrep through fzf
