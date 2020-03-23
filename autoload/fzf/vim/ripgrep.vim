@@ -121,7 +121,7 @@ function! fzf#vim#ripgrep#rg(initial_query, ...) abort
         \ l:fullscreen)
 
   " TODO: Need to access user's query (if it has changed) inside the fzf process
-  call s:fzfrg_bind_keymappings(a:initial_query, '')
+  call s:fzfrg_bind_keymappings(a:initial_query, l:path, '')
 endfunction
 
 
@@ -161,23 +161,31 @@ function! fzf#vim#ripgrep#rg_fzf(search_pattern, ...) abort
         \ l:fullscreen ? fzf#vim#with_preview({'options': fzf_opts}, 'up:60%', g:fzf_ripgrep_keybindings['toggle-preview'])
         \              : fzf#vim#with_preview({'options': fzf_opts}, 'right:50%', g:fzf_ripgrep_keybindings['toggle-preview']),
         \ l:fullscreen)
-  call s:fzfrg_bind_keymappings(a:search_pattern, l:rg_additional_arg)        " TODO directory???
+  call s:fzfrg_bind_keymappings(a:search_pattern, l:path, l:rg_additional_arg)
 endfunction
 
 
-function! s:fzfrg_bind_keymappings(query, rg_options) abort
+function! s:fzfrg_bind_keymappings(query, path, rg_options) abort
   " additional keymappings on the fzf window (e.g. move to quickfix)
+  " Assumes: the current buffer is a FZF window (need to store argument into b: vars for tmap)
   " Args:
   " - query: the rg pattern string (will be escaped inside)
+  " - path: the path (directory) to search (will be escaped inside)
   " - rg_options: additional flags passed to rg (passed to shell as-is)
-  let t:FzfRg_last_query = a:query
-  let t:FzfRg_last_options = a:rg_options
-  if !empty(t:FzfRg_last_query)
+  let b:FzfRg_last_query = a:query
+  let b:FzfRg_last_path = a:path
+  let b:FzfRg_last_options = a:rg_options
+  if !empty(b:FzfRg_last_query)
     " CTRL-Q (unless query is empty) -> call rg again into the quickfix
-    tnoremap <silent> <buffer> <C-q>    <C-\><C-n>:call timer_start(0, {
-          \ -> ag#Ag('grep!', "--smart-case " . shellescape(t:FzfRg_last_query) . " " . t:FzfRg_last_options)
-          \ })<CR>:q<CR>
+    tnoremap <silent> <buffer> <C-q>    <C-\><C-n>:call timer_start(0,
+          \ fzf#vim#ripgrep#_bind_agcall(b:FzfRg_last_query, b:FzfRg_last_path, b:FzfRg_last_options))<CR>:q<CR>
   endif
+endfunction
+
+function! fzf#vim#ripgrep#_bind_agcall(query, path, rg_options) abort
+  " Make a lambda function callable by timer_start, binding `query` and `options`.
+  let l:rg_path_args = !empty(a:path) ? shellescape(a:path) : ''
+  return { -> ag#Ag('grep!', "--smart-case " . a:rg_options . " " . shellescape(a:query) . " " . l:rg_path_args) }
 endfunction
 
 
